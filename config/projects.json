@@ -1,0 +1,32 @@
+{
+  "admin": {
+    "name": "后台示例",
+    "type": "jeecg-admin",
+    "root": "../admin-project",
+    "url": "http://127.0.0.1:3102/",
+    "routes": ["/"],
+    "viewports": [
+      { "name": "desktop", "width": 1366, "height": 768 }
+    ]
+  },
+  "mobile": {
+    "name": "移动端示例",
+    "type": "mobile-vue",
+    "root": "../mobile-project",
+    "url": "http://127.0.0.1:3101/",
+    "routes": ["/"],
+    "viewports": [
+      { "name": "mobile", "width": 390, "height": 844 }
+    ]
+  },
+  "screen": {
+    "name": "大屏示例",
+    "type": "data-screen",
+    "root": "../screen-project",
+    "url": "http://127.0.0.1:5173/",
+    "routes": ["/"],
+    "viewports": [
+      { "name": "screen", "width": 1920, "height": 1080 }
+    ]
+  }
+}

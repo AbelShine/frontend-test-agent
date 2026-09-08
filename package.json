@@ -1,0 +1,17 @@
+{
+  "name": "frontend-test-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "可配置、可复用的前端页面自动化测试执行工具",
+  "scripts": {
+    "start": "node src/cli.mjs test all",
+    "test:project": "node src/cli.mjs test",
+    "auth": "node src/cli.mjs auth",
+    "test": "node --test",
+    "unit": "node --test"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}
