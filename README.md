@@ -88,6 +88,16 @@ npm run test:project -- admin --allow-writes
 
 报告保存在`output/<时间>/index.html`和`report.json`。
 
+## 无业务需求时体验完整流程
+
+把本项目与`frontend-audit-agent`放在同级目录，然后进入Audit项目直接运行：
+
+```bash
+npm start
+```
+
+Audit会自动启动内置演示页面，执行静态与运行态巡检；随后本项目会自动完成“查询 → 打开弹窗 → 安全模拟提交 → 检查请求次数 → 确认列表刷新”。演示过程不连接真实业务接口，也不需要登录。
+
 ## 与Audit联动
 
 推荐把两个项目放在同一个目录：
