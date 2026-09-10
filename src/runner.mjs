@@ -22,16 +22,20 @@ export async function runProject(projectKey, project, configuredScenarios, { out
   const context = await browser.newContext(storageState ? { storageState } : {});
   const scenarios = buildScenarios(projectKey, project, configuredScenarios);
   const results = [];
-  for (const scenario of scenarios) {
-    results.push(await runScenario(context, projectKey, project, scenario, { outputDir, allowWrites }));
+  try {
+    for (const scenario of scenarios) {
+      results.push(await runScenario(context, projectKey, project, scenario, { outputDir, allowWrites }));
+    }
+  } finally {
+    await browser.close();
   }
-  await browser.close();
   return results;
 }
 
 export function buildScenarios(projectKey, project, configured = []) {
   const smoke = (project.routes || ['/']).map((route) => ({
     name: `页面冒烟：${route}`,
+    coverage: 'smoke',
     route,
     viewport: project.viewports?.[0],
     actions: [
@@ -40,7 +44,7 @@ export function buildScenarios(projectKey, project, configured = []) {
       { action: 'assertNoHorizontalOverflow' },
     ],
   }));
-  return [...smoke, ...(configured || [])];
+  return [...smoke, ...(configured || []).map((scenario) => ({ ...scenario, coverage: 'configured-scenario' }))];
 }
 
 async function runScenario(context, projectKey, project, scenario, { outputDir, allowWrites }) {
@@ -69,16 +73,20 @@ async function runScenario(context, projectKey, project, scenario, { outputDir, 
     });
   }
   let error = '';
+  let errorCode = '';
   let screenshot = '';
   try {
     const target = new URL(scenario.route || '/', project.url).toString();
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: scenario.timeoutMs || 20000 });
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+    if (!scenario.allowLoginPage) await assertBusinessPage(page, projectKey);
     for (const action of scenario.actions || []) await executeAction(page, action, requests);
+    if (!scenario.allowLoginPage) await assertBusinessPage(page, projectKey);
     if (consoleErrors.length) throw new Error(`控制台错误：${consoleErrors[0]}`);
     if (httpErrors.length) throw new Error(`接口错误：${httpErrors[0]}`);
   } catch (caught) {
     error = caught instanceof Error ? caught.message : String(caught);
+    errorCode = caught.code || '';
     screenshot = `${safeName(projectKey)}-${safeName(scenario.name)}.png`;
     await page.screenshot({ path: path.join(outputDir, screenshot), fullPage: true }).catch(() => {});
   }
@@ -86,13 +94,30 @@ async function runScenario(context, projectKey, project, scenario, { outputDir, 
   return {
     project: projectKey,
     name: scenario.name,
-    status: error ? 'failed' : 'passed',
+    status: errorCode === 'AUTH_REQUIRED' ? 'blocked' : error ? 'failed' : 'passed',
     durationMs: Date.now() - startedAt,
     error,
+    errorCode,
+    coverage: scenario.coverage,
     screenshot,
     requestCount: requests.length,
     writeMode: allowWrites ? 'real' : 'mocked',
   };
+}
+
+async function assertBusinessPage(page, projectKey) {
+  const url = new URL(page.url());
+  const loginRoute = /(?:^|\/)(?:login|signin|sign-in|sso)(?:\/|$)/i;
+  const path = url.pathname;
+  const hashPath = url.hash.replace(/^#/, '').split('?')[0];
+  const text = await page.locator('body').innerText({ timeout: 2000 }).catch(() => '');
+  const loginForm = await page.locator('input[type="password"]:visible').count() > 0
+    && /(?:登录|登\s+录|sign\s*in|log\s*in)/i.test(text);
+  if (loginRoute.test(path) || loginRoute.test(hashPath) || loginForm) {
+    const error = new Error(`当前停留在登录页，业务验证未执行。请运行 npm run auth -- ${projectKey} 保存登录状态后重试。若场景专门测试登录页，请设置 allowLoginPage: true。`);
+    error.code = 'AUTH_REQUIRED';
+    throw error;
+  }
 }
 
 export async function executeAction(page, action, requests = []) {

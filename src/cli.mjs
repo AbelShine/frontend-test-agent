@@ -32,6 +32,7 @@ for (const [projectKey, project] of selected) {
 const report = { generatedAt: new Date().toISOString(), safeWriteMode: !flags.includes('--allow-writes'), results };
 const reportFile = await writeReport(outputDir, report);
 const failed = results.filter((item) => item.status === 'failed').length;
-console.log(`测试完成：通过${results.length - failed}，失败${failed}`);
+const blocked = results.filter((item) => item.status === 'blocked').length;
+console.log(`测试完成：通过${results.length - failed - blocked}，失败${failed}，阻塞${blocked}`);
 console.log(`报告：${reportFile}`);
-process.exit(failed ? 1 : 0);
+process.exit(failed || blocked ? 1 : 0);
